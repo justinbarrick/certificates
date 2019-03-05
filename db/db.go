@@ -15,8 +15,7 @@ type dbConfig struct {
 	Path string `json:"path"`
 }
 
-// New initializes the monitoring with the given configuration.
-// Right now it only supports newrelic as the monitoring backend.
+// New returns a new database client that implements the nosql.DB interface.
 func New(raw json.RawMessage) (nosql.DB, error) {
 	var config dbConfig
 	if err := json.Unmarshal(raw, &config); err != nil {

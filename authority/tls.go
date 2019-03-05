@@ -34,8 +34,6 @@ var (
 	stepOIDRoot               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64}
 	stepOIDProvisioner        = append(asn1.ObjectIdentifier(nil), append(stepOIDRoot, 1)...)
 	oidAuthorityKeyIdentifier = asn1.ObjectIdentifier{2, 5, 29, 35}
-
-	revokedBucket = []byte("revoked_x509_certs")
 )
 
 type stepProvisionerASN1 struct {
@@ -263,12 +261,17 @@ type RevokedCertificateInfo struct {
 	RevokedAt    time.Time
 }
 
-// Revoke does stuff
-// TODO:
+// Revoke passively revokes a certificate by adding it to a persistent table
+// of revoked certificates which is then queried on Renew.
+//
+// NOTE: Only supports passive revocation - prevent existing certificates from
+// being renewed.
+//
+// TODO: Add OCSP and CRL support.
 func (a *Authority) Revoke(serial string, client *x509.Certificate, reason string) error {
 	if a.db == nil {
 		return &apiError{errors.New("no persistence layer configured"),
-			http.StatusMethodNotAllowed, context{}}
+			http.StatusUnauthorized, context{}}
 	}
 
 	rci := RevokedCertificateInfo{
@@ -283,7 +286,7 @@ func (a *Authority) Revoke(serial string, client *x509.Certificate, reason strin
 			http.StatusInternalServerError, context{}}
 	}
 
-	if a.db.Set(revokedBucket, []byte(serial), rcib); err != nil {
+	if a.db.Set(revokedCertsTable, []byte(serial), rcib); err != nil {
 		return &apiError{errors.Wrap(err, "database Set error"),
 			http.StatusInternalServerError, context{}}
 	}

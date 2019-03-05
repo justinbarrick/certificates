@@ -17,6 +17,8 @@ import (
 
 const legacyAuthority = "step-certificate-authority"
 
+var revokedCertsTable = []byte("revoked_x509_certs")
+
 // Authority implements the Certificate Authority internal interface.
 type Authority struct {
 	config                 *Config
@@ -75,6 +77,22 @@ func New(config *Config) (*Authority, error) {
 	return a, nil
 }
 
+// Initialize database with all necessary tables.
+func (a *Authority) initDB() error {
+	var err error
+	if a.db, err = db.New(a.config.DB); err != nil {
+		return err
+	}
+	tables := [][]byte{revokedCertsTable}
+	for _, b := range tables {
+		if err = a.db.CreateTable(revokedCertsTable); err != nil {
+			return errors.Wrapf(err, "error creating table %s",
+				string(b))
+		}
+	}
+	return nil
+}
+
 // init performs validation and initializes the fields of an Authority struct.
 func (a *Authority) init() error {
 	// Check if handler has already been validated/initialized.
@@ -86,13 +104,7 @@ func (a *Authority) init() error {
 
 	// Initialize Database if defined in configuration.
 	if len(a.config.DB) > 0 {
-		if a.db, err = db.New(a.config.DB); err != nil {
-			return err
-		}
-		if err = a.db.CreateTable(revokedBucket); err != nil {
-			return errors.Wrapf(err, "error creating bucket %s",
-				string(revokedBucket))
-		}
+		a.initDB()
 	}
 
 	// Load the root certificates and add them to the certificate store

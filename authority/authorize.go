@@ -158,9 +158,11 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 func (a *Authority) authorizeRenewal(crt *x509.Certificate) error {
 	errContext := map[string]interface{}{"serialNumber": crt.SerialNumber.String()}
 
-	// Check the passive revocation list.
+	// Check the passive revocation table if it exists.
 	if a.db != nil {
-		if _, err := a.db.Get(revokedBucket, []byte(crt.SerialNumber.String())); err != nil {
+		// If the error is `Not Found` then the certificate has not been revoked.
+		// Any other error should be propagated to the caller.
+		if _, err := a.db.Get(revokedCertsTable, []byte(crt.SerialNumber.String())); err != nil {
 			if err.Error() != "not found" {
 				return &apiError{
 					err:     errors.Wrap(err, "error checking revocation bucket"),
@@ -178,6 +180,7 @@ func (a *Authority) authorizeRenewal(crt *x509.Certificate) error {
 		}
 	}
 
+	// Locate the step provisioner extension.
 	for _, e := range crt.Extensions {
 		if e.Id.Equal(stepOIDProvisioner) {
 			var provisioner stepProvisionerASN1
