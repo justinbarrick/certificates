@@ -3,6 +3,7 @@ package authority
 import (
 	"crypto/x509"
 	"encoding/asn1"
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -156,7 +157,30 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 //
 // TODO(mariano): should we authorize by default?
 func (a *Authority) authorizeRenewal(crt *x509.Certificate) error {
+	fmt.Printf("serial = %+v\n", crt.SerialNumber.String())
 	errContext := map[string]interface{}{"serialNumber": crt.SerialNumber.String()}
+
+	// Check the passive revocation list.
+	if a.db != nil {
+		fmt.Printf("authrenew bytes = %+v\n", []byte(crt.SerialNumber.String()))
+		if _, err := a.db.Get(revokedBucket, []byte(crt.SerialNumber.String())); err != nil {
+			if err.Error() != "not found" {
+				return &apiError{
+					err:     errors.Wrap(err, "error checking revocation bucket"),
+					code:    http.StatusInternalServerError,
+					context: errContext,
+				}
+			}
+		} else {
+			// This certificate has been revoked.
+			return &apiError{
+				err:     errors.New("certificate has been revoked"),
+				code:    http.StatusUnauthorized,
+				context: errContext,
+			}
+		}
+	}
+
 	for _, e := range crt.Extensions {
 		if e.Id.Equal(stepOIDProvisioner) {
 			var provisioner stepProvisionerASN1

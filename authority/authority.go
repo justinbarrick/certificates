@@ -8,8 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/smallstep/certificates/db"
 	"github.com/smallstep/cli/crypto/pemutil"
 	"github.com/smallstep/cli/crypto/x509util"
+	"github.com/smallstep/nosql"
 )
 
 const legacyAuthority = "step-certificate-authority"
@@ -28,6 +31,7 @@ type Authority struct {
 	provisionerKeySetIndex *sync.Map
 	sortedProvisioners     provisionerSlice
 	audiences              []string
+	db                     nosql.DB
 	// Do not re-initialize
 	initOnce bool
 }
@@ -79,6 +83,17 @@ func (a *Authority) init() error {
 	}
 
 	var err error
+
+	// Initialize Database if defined in configuration.
+	if len(a.config.DB) > 0 {
+		if a.db, err = db.New(a.config.DB); err != nil {
+			return err
+		}
+		if err = a.db.CreateTable(revokedBucket); err != nil {
+			return errors.Wrapf(err, "error creating bucket %s",
+				string(revokedBucket))
+		}
+	}
 
 	// Load the root certificates and add them to the certificate store
 	a.rootX509Certs = make([]*x509.Certificate, len(a.config.Root))

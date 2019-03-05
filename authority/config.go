@@ -42,6 +42,7 @@ type Config struct {
 	Address          string              `json:"address"`
 	DNSNames         []string            `json:"dnsNames"`
 	Logger           json.RawMessage     `json:"logger,omitempty"`
+	DB               json.RawMessage     `json:"db,omitempty"`
 	Monitoring       json.RawMessage     `json:"monitoring,omitempty"`
 	AuthorityConfig  *AuthConfig         `json:"authority,omitempty"`
 	TLS              *tlsutil.TLSOptions `json:"tls,omitempty"`

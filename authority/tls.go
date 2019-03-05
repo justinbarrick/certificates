@@ -5,7 +5,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -33,6 +35,8 @@ var (
 	stepOIDRoot               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64}
 	stepOIDProvisioner        = append(asn1.ObjectIdentifier(nil), append(stepOIDRoot, 1)...)
 	oidAuthorityKeyIdentifier = asn1.ObjectIdentifier{2, 5, 29, 35}
+
+	revokedBucket = []byte("revoked_x509_certs")
 )
 
 type stepProvisionerASN1 struct {
@@ -173,7 +177,7 @@ func (a *Authority) Renew(ocx *x509.Certificate) (*x509.Certificate, *x509.Certi
 	// Issuer
 	issIdentity := a.intermediateIdentity
 
-	// Convert a realx509.Certificate to the step x509 Certificate.
+	// Convert a x509.Certificate to a stepx509 Certificate.
 	oldCert, err := stepx509.ParseCertificate(ocx.Raw)
 	if err != nil {
 		return nil, nil, &apiError{
@@ -195,15 +199,15 @@ func (a *Authority) Renew(ocx *x509.Certificate) (*x509.Certificate, *x509.Certi
 		ExtKeyUsage:                 oldCert.ExtKeyUsage,
 		UnknownExtKeyUsage:          oldCert.UnknownExtKeyUsage,
 		BasicConstraintsValid:       oldCert.BasicConstraintsValid,
-		IsCA:                        oldCert.IsCA,
-		MaxPathLen:                  oldCert.MaxPathLen,
-		MaxPathLenZero:              oldCert.MaxPathLenZero,
-		OCSPServer:                  oldCert.OCSPServer,
-		IssuingCertificateURL:       oldCert.IssuingCertificateURL,
-		DNSNames:                    oldCert.DNSNames,
-		EmailAddresses:              oldCert.EmailAddresses,
-		IPAddresses:                 oldCert.IPAddresses,
-		URIs:                        oldCert.URIs,
+		IsCA:                  oldCert.IsCA,
+		MaxPathLen:            oldCert.MaxPathLen,
+		MaxPathLenZero:        oldCert.MaxPathLenZero,
+		OCSPServer:            oldCert.OCSPServer,
+		IssuingCertificateURL: oldCert.IssuingCertificateURL,
+		DNSNames:              oldCert.DNSNames,
+		EmailAddresses:        oldCert.EmailAddresses,
+		IPAddresses:           oldCert.IPAddresses,
+		URIs:                  oldCert.URIs,
 		PermittedDNSDomainsCritical: oldCert.PermittedDNSDomainsCritical,
 		PermittedDNSDomains:         oldCert.PermittedDNSDomains,
 		ExcludedDNSDomains:          oldCert.ExcludedDNSDomains,
@@ -249,6 +253,44 @@ func (a *Authority) Renew(ocx *x509.Certificate) (*x509.Certificate, *x509.Certi
 	}
 
 	return serverCert, caCert, nil
+}
+
+// RevokedCertificateInfo contains information regarding the certificate
+// revocation action.
+type RevokedCertificateInfo struct {
+	Serial       string
+	ClientSerial string
+	Reason       string
+	RevokedAt    time.Time
+}
+
+// Revoke does stuff
+// TODO:
+func (a *Authority) Revoke(serial string, client *x509.Certificate, reason string) error {
+	if a.db == nil {
+		return &apiError{errors.New("no persistence layer configured"),
+			http.StatusMethodNotAllowed, context{}}
+	}
+
+	rci := RevokedCertificateInfo{
+		Serial:       serial,
+		ClientSerial: client.SerialNumber.String(),
+		Reason:       reason,
+		RevokedAt:    time.Now().UTC(),
+	}
+	rcib, err := json.Marshal(rci)
+	if err != nil {
+		return &apiError{errors.Wrap(err, "error marshaling revoked certificate info"),
+			http.StatusInternalServerError, context{}}
+	}
+
+	fmt.Printf("bytes = %+v\n", []byte(serial))
+	if a.db.Set(revokedBucket, []byte(serial), rcib); err != nil {
+		return &apiError{errors.Wrap(err, "database Set error"),
+			http.StatusInternalServerError, context{}}
+	}
+
+	return nil
 }
 
 // GetTLSCertificate creates a new leaf certificate to be used by the CA HTTPS server.

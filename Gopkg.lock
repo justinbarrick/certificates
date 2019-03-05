@@ -228,12 +228,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
+  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
   name = "github.com/pkg/errors"
   packages = ["."]
   pruneopts = "UT"
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
   digest = "1:2e76a73cb51f42d63a2a1a85b3dc5731fd4faf6821b434bd0ef2c099186031d6"
@@ -277,7 +277,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a11fa27b1cebc2aa3650bd2086aeadf1e2aaf1f4b646895893b80260b17a19d2"
+  digest = "1:1615e94736f461adae4de791d88bf5baaae2aaa433817f89422d740cff22b907"
   name = "github.com/smallstep/cli"
   packages = [
     "command",
@@ -298,7 +298,15 @@
     "utils",
   ]
   pruneopts = "UT"
-  revision = "68ac9850f47f4cfe0045f1444f3f23404e2237ba"
+  revision = "096252f719a87760df167d184344914829f8cdb2"
+
+[[projects]]
+  branch = "max/revoke"
+  digest = "1:55bcbcdee7b482ca224f97b191723cbf585e7e834891aa8b0b5aecac3fd2fe32"
+  name = "github.com/smallstep/nosql"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d6e11fcd1d0a86e5fc994b49f643c5c45d31d131"
 
 [[projects]]
   branch = "master"
@@ -315,6 +323,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "b67dcf995b6a7b7f14fad5fcb7cc5441b05e814b"
+
+[[projects]]
+  digest = "1:5f7414cf41466d4b4dd7ec52b2cd3e481e08cfd11e7e24fef730c0e483e88bb1"
+  name = "go.etcd.io/bbolt"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "63597a96ec0ad9e6d43c3fc81e809909e0237461"
+  version = "v1.3.2"
 
 [[projects]]
   branch = "master"
@@ -574,6 +590,7 @@
     "github.com/smallstep/cli/token",
     "github.com/smallstep/cli/token/provision",
     "github.com/smallstep/cli/usage",
+    "github.com/smallstep/nosql",
     "github.com/tsenart/deadcode",
     "github.com/urfave/cli",
     "golang.org/x/net/context",
