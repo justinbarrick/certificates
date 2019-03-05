@@ -346,6 +346,30 @@ func (c *Client) Renew(tr http.RoundTripper) (*api.SignResponse, error) {
 	return &sign, nil
 }
 
+// Revoke performs the revoke request to the CA and returns the api.RevokeResponse
+// struct.
+func (c *Client) Revoke(req *api.RevokeRequest, tr http.RoundTripper) (*api.RevokeResponse, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error marshaling request")
+	}
+
+	u := c.endpoint.ResolveReference(&url.URL{Path: "/revoke"})
+	client := &http.Client{Transport: tr}
+	resp, err := client.Post(u.String(), "application/json", bytes.NewReader(body))
+	if err != nil {
+		return nil, errors.Wrapf(err, "client POST %s failed", u)
+	}
+	if resp.StatusCode >= 400 {
+		return nil, readError(resp.Body)
+	}
+	var revoke api.RevokeResponse
+	if err := readJSON(resp.Body, &revoke); err != nil {
+		return nil, errors.Wrapf(err, "error reading %s", u)
+	}
+	return &revoke, nil
+}
+
 // Provisioners performs the provisioners request to the CA and returns the
 // api.ProvisionersResponse struct with a map of provisioners.
 //

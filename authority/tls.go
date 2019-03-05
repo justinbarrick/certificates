@@ -7,7 +7,6 @@ import (
 	"encoding/asn1"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -284,7 +283,6 @@ func (a *Authority) Revoke(serial string, client *x509.Certificate, reason strin
 			http.StatusInternalServerError, context{}}
 	}
 
-	fmt.Printf("bytes = %+v\n", []byte(serial))
 	if a.db.Set(revokedBucket, []byte(serial), rcib); err != nil {
 		return &apiError{errors.Wrap(err, "database Set error"),
 			http.StatusInternalServerError, context{}}
