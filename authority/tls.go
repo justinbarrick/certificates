@@ -5,13 +5,13 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/json"
 	"encoding/pem"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/smallstep/certificates/db"
 	"github.com/smallstep/cli/crypto/pemutil"
 	"github.com/smallstep/cli/crypto/tlsutil"
 	"github.com/smallstep/cli/crypto/x509util"
@@ -252,15 +252,6 @@ func (a *Authority) Renew(ocx *x509.Certificate) (*x509.Certificate, *x509.Certi
 	return serverCert, caCert, nil
 }
 
-// RevokedCertificateInfo contains information regarding the certificate
-// revocation action.
-type RevokedCertificateInfo struct {
-	Serial       string
-	ClientSerial string
-	Reason       string
-	RevokedAt    time.Time
-}
-
 // Revoke passively revokes a certificate by adding it to a persistent table
 // of revoked certificates which is then queried on Renew.
 //
@@ -268,27 +259,21 @@ type RevokedCertificateInfo struct {
 // being renewed.
 //
 // TODO: Add OCSP and CRL support.
-func (a *Authority) Revoke(serial string, client *x509.Certificate, reason string) error {
+func (a *Authority) Revoke(serial string, provisionerID string, reason int) error {
 	if a.db == nil {
 		return &apiError{errors.New("no persistence layer configured"),
 			http.StatusUnauthorized, context{}}
 	}
 
-	rci := RevokedCertificateInfo{
-		Serial:       serial,
-		ClientSerial: client.SerialNumber.String(),
-		Reason:       reason,
-		RevokedAt:    time.Now().UTC(),
-	}
-	rcib, err := json.Marshal(rci)
-	if err != nil {
-		return &apiError{errors.Wrap(err, "error marshaling revoked certificate info"),
-			http.StatusInternalServerError, context{}}
+	rci := &db.RevokedCertificateInfo{
+		Serial:        serial,
+		ProvisionerID: provisionerID,
+		Reason:        reason,
+		RevokedAt:     time.Now().UTC(),
 	}
 
-	if a.db.Set(revokedCertsTable, []byte(serial), rcib); err != nil {
-		return &apiError{errors.Wrap(err, "database Set error"),
-			http.StatusInternalServerError, context{}}
+	if err := a.db.Revoke(rci); err != nil {
+		return err
 	}
 
 	return nil

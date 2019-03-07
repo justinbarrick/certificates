@@ -49,7 +49,7 @@ required = [
   name = "github.com/smallstep/cli"
 
 [[constraint]]
-  branch = "max/revoke"
+  branch = "master"
   name = "github.com/smallstep/nosql"
 
 [prune]

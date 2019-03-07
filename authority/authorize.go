@@ -58,6 +58,46 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 		claims     = Claims{}
 	)
 
+	p, err := a.authorizeToken(ott, &claims, a.audiences)
+	if err != nil {
+		return nil, &apiError{err, http.StatusUnauthorized, errContext}
+	}
+
+	// NOTE: This is for backwards compatibility with older versions of cli
+	// and certificates. Older versions added the token subject as the only SAN
+	// in a CSR by default.
+	if len(claims.SANs) == 0 {
+		claims.SANs = []string{claims.Subject}
+	}
+	dnsNames, ips := x509util.SplitSANs(claims.SANs)
+
+	signOps := []interface{}{
+		&commonNameClaim{claims.Subject},
+		&dnsNamesClaim{dnsNames},
+		&ipAddressesClaim{ips},
+		p,
+	}
+
+	return signOps, nil
+}
+
+// AuthorizeRevoke authorizes a signature request by validating and authenticating
+// a OTT that must be sent w/ the request.
+// Returns a tuple of the provisioner ID and error if one occurred.
+func (a *Authority) AuthorizeRevoke(ott string) (string, error) {
+	var claims = Claims{}
+
+	p, err := a.authorizeToken(ott, &claims, a.revokeAudiences)
+	if err != nil {
+		return "", err
+	}
+
+	return p.ID(), nil
+}
+
+func (a *Authority) authorizeToken(ott string, claims *Claims, audiences []string) (*Provisioner, error) {
+	var errContext = map[string]interface{}{"ott": ott}
+
 	// Validate payload
 	token, err := jwt.ParseSigned(ott)
 	if err != nil {
@@ -68,9 +108,10 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 	// Get claims w/out verification. We need to look up the provisioner
 	// key in order to verify the claims and we need the issuer from the claims
 	// before we can look up the provisioner.
-	if err = token.UnsafeClaimsWithoutVerification(&claims); err != nil {
+	if err = token.UnsafeClaimsWithoutVerification(claims); err != nil {
 		return nil, &apiError{err, http.StatusUnauthorized, errContext}
 	}
+
 	kid := token.Headers[0].KeyID // JWT will only have 1 header.
 	if len(kid) == 0 {
 		return nil, &apiError{errors.New("authorize: token KeyID cannot be empty"),
@@ -110,7 +151,7 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 		}
 	}
 
-	if !matchesAudience(claims.Audience, a.audiences) {
+	if !matchesAudience(claims.Audience, audiences) {
 		return nil, &apiError{errors.New("authorize: token audience invalid"), http.StatusUnauthorized,
 			errContext}
 	}
@@ -118,24 +159,6 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 	if claims.Subject == "" {
 		return nil, &apiError{errors.New("authorize: token subject cannot be empty"),
 			http.StatusUnauthorized, errContext}
-	}
-
-	// NOTE: This is for backwards compatibility with older versions of cli
-	// and certificates. Older versions added the token subject as the only SAN
-	// in a CSR by default.
-	if len(claims.SANs) == 0 {
-		claims.SANs = []string{claims.Subject}
-	}
-	dnsNames, ips := x509util.SplitSANs(claims.SANs)
-	if err != nil {
-		return nil, err
-	}
-
-	signOps := []interface{}{
-		&commonNameClaim{claims.Subject},
-		&dnsNamesClaim{dnsNames},
-		&ipAddressesClaim{ips},
-		p,
 	}
 
 	// Store the token to protect against reuse.
@@ -147,7 +170,7 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 			errContext}
 	}
 
-	return signOps, nil
+	return p, err
 }
 
 // authorizeRenewal tries to locate the step provisioner extension, and checks
@@ -158,25 +181,16 @@ func (a *Authority) Authorize(ott string) ([]interface{}, error) {
 func (a *Authority) authorizeRenewal(crt *x509.Certificate) error {
 	errContext := map[string]interface{}{"serialNumber": crt.SerialNumber.String()}
 
-	// Check the passive revocation table if it exists.
-	if a.db != nil {
-		// If the error is `Not Found` then the certificate has not been revoked.
-		// Any other error should be propagated to the caller.
-		if _, err := a.db.Get(revokedCertsTable, []byte(crt.SerialNumber.String())); err != nil {
-			if err.Error() != "not found" {
-				return &apiError{
-					err:     errors.Wrap(err, "error checking revocation bucket"),
-					code:    http.StatusInternalServerError,
-					context: errContext,
-				}
-			}
-		} else {
-			// This certificate has been revoked.
-			return &apiError{
-				err:     errors.New("certificate has been revoked"),
-				code:    http.StatusUnauthorized,
-				context: errContext,
-			}
+	// Check the passive revocation table.
+	isRevoked, err := a.db.IsRevoked(crt.SerialNumber.String())
+	if err != nil {
+		return err
+	}
+	if isRevoked {
+		return &apiError{
+			err:     errors.New("certificate has been revoked"),
+			code:    http.StatusUnauthorized,
+			context: errContext,
 		}
 	}
 

@@ -26,11 +26,12 @@ import (
 // Authority is the interface implemented by a CA authority.
 type Authority interface {
 	Authorize(ott string) ([]interface{}, error)
+	AuthorizeRevoke(ott string) (string, error)
 	GetTLSOptions() *tlsutil.TLSOptions
 	Root(shasum string) (*x509.Certificate, error)
 	Sign(cr *x509.CertificateRequest, signOpts authority.SignOptions, extraOpts ...interface{}) (*x509.Certificate, *x509.Certificate, error)
 	Renew(peer *x509.Certificate) (*x509.Certificate, *x509.Certificate, error)
-	Revoke(serial string, client *x509.Certificate, reason string) error
+	Revoke(serial string, provisionerID string, reason int) error
 	GetProvisioners(cursor string, limit int) ([]*authority.Provisioner, string, error)
 	GetEncryptedKey(kid string) (string, error)
 	GetRoots() (federation []*x509.Certificate, err error)
@@ -146,11 +147,6 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-// RevokeResponse is the response object that returns the health of the server.
-type RevokeResponse struct {
-	Status string `json:"status"`
-}
-
 // RootResponse is the response object that returns the PEM of a root certificate.
 type RootResponse struct {
 	RootPEM Certificate `json:"ca"`
@@ -162,12 +158,6 @@ type SignRequest struct {
 	OTT       string             `json:"ott"`
 	NotAfter  time.Time          `json:"notAfter"`
 	NotBefore time.Time          `json:"notBefore"`
-}
-
-// RevokeRequest is the request body for a revocation request.
-type RevokeRequest struct {
-	Serial string `json:"serial"`
-	Reason string `json:"reason"`
 }
 
 // ProvisionersResponse is the response object that returns the list of
@@ -194,19 +184,6 @@ func (s *SignRequest) Validate() error {
 	}
 	if s.OTT == "" {
 		return BadRequest(errors.New("missing ott"))
-	}
-
-	return nil
-}
-
-// Validate checks the fields of the RevokeRequest and returns nil if they are ok
-// or an error if something is wrong.
-func (r *RevokeRequest) Validate() error {
-	if r.Serial == "" {
-		return BadRequest(errors.New("missing serial"))
-	}
-	if r.Reason == "" {
-		return BadRequest(errors.New("missing reason"))
 	}
 
 	return nil
@@ -341,38 +318,6 @@ func (h *caHandler) Renew(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Revoke prevents a certificate from being renewed in the future.
-// TODO: Add CRL and OCSP support to prevent certificate from being used in present.
-func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
-	var body RevokeRequest
-	if err := ReadJSON(r.Body, &body); err != nil {
-		WriteError(w, BadRequest(errors.Wrap(err, "error reading request body")))
-		return
-	}
-
-	if err := body.Validate(); err != nil {
-		WriteError(w, err)
-		return
-	}
-
-	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
-		WriteError(w, BadRequest(errors.New("missing peer certificate")))
-		return
-	}
-
-	clientCrt := r.TLS.PeerCertificates[0]
-
-	logRevoke(w, body.Serial, clientCrt.SerialNumber.String(), body.Reason)
-
-	if err := h.Authority.Revoke(body.Serial, clientCrt, body.Reason); err != nil {
-		WriteError(w, Forbidden(err))
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	JSON(w, &RevokeResponse{Status: "ok"})
-}
-
 // Provisioners returns the list of provisioners configured in the authority.
 func (h *caHandler) Provisioners(w http.ResponseWriter, r *http.Request) {
 	cursor, limit, err := parseCursor(r)
@@ -457,12 +402,12 @@ func logOtt(w http.ResponseWriter, token string) {
 	}
 }
 
-func logRevoke(w http.ResponseWriter, serial, clientSerial, reason string) {
+func logRevoke(w http.ResponseWriter, serial, provisionerID, reason string) {
 	if rl, ok := w.(logging.ResponseLogger); ok {
 		rl.WithFields(map[string]interface{}{
-			"serial":       serial,
-			"clientSerial": clientSerial,
-			"reason":       reason,
+			"serial":        serial,
+			"provisionerID": provisionerID,
+			"reason":        reason,
 		})
 	}
 }

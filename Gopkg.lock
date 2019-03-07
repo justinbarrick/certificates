@@ -301,12 +301,12 @@
   revision = "096252f719a87760df167d184344914829f8cdb2"
 
 [[projects]]
-  branch = "max/revoke"
-  digest = "1:55bcbcdee7b482ca224f97b191723cbf585e7e834891aa8b0b5aecac3fd2fe32"
+  branch = "master"
+  digest = "1:fd8d9eb07509d8ef47fc82c99646f0b2203b2ba3c240ba77d8c457bb6109836d"
   name = "github.com/smallstep/nosql"
   packages = ["."]
   pruneopts = "UT"
-  revision = "d6e11fcd1d0a86e5fc994b49f643c5c45d31d131"
+  revision = "d8f68d14f9ae04e0991dce06b44768f2d38dccf8"
 
 [[projects]]
   branch = "master"
@@ -334,13 +334,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a068d4e48e0f2e172903d25b6e066815fa8efd4b01102aec4c741f02a9650c03"
+  digest = "1:5dd7da6df07f42194cb25d162b4b89664ed7b08d7d4334f6a288393d54b095ce"
   name = "golang.org/x/crypto"
   packages = [
     "cryptobyte",
     "cryptobyte/asn1",
     "ed25519",
     "ed25519/internal/edwards25519",
+    "ocsp",
     "pbkdf2",
     "ssh/terminal",
   ]
@@ -593,6 +594,7 @@
     "github.com/smallstep/nosql",
     "github.com/tsenart/deadcode",
     "github.com/urfave/cli",
+    "golang.org/x/crypto/ocsp",
     "golang.org/x/net/context",
     "golang.org/x/net/http2",
     "google.golang.org/grpc",

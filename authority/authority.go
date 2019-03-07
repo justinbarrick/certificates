@@ -8,16 +8,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/smallstep/certificates/db"
 	"github.com/smallstep/cli/crypto/pemutil"
 	"github.com/smallstep/cli/crypto/x509util"
-	"github.com/smallstep/nosql"
 )
 
 const legacyAuthority = "step-certificate-authority"
-
-var revokedCertsTable = []byte("revoked_x509_certs")
 
 // Authority implements the Certificate Authority internal interface.
 type Authority struct {
@@ -33,7 +29,8 @@ type Authority struct {
 	provisionerKeySetIndex *sync.Map
 	sortedProvisioners     provisionerSlice
 	audiences              []string
-	db                     nosql.DB
+	revokeAudiences        []string
+	db                     *db.DB
 	// Do not re-initialize
 	initOnce bool
 }
@@ -58,7 +55,16 @@ func New(config *Config) (*Authority, error) {
 	// The CA might have proxies in front so we cannot rely on the port.
 	audiences := []string{legacyAuthority}
 	for _, name := range config.DNSNames {
-		audiences = append(audiences, fmt.Sprintf("https://%s/sign", name), fmt.Sprintf("https://%s/1.0/sign", name))
+		audiences = append(audiences, fmt.Sprintf("https://%s/sign", name),
+			fmt.Sprintf("https://%s/1.0/sign", name))
+	}
+
+	// Define revokeAudiences: legacy + possible urls without the ports.
+	// The CA might have proxies in front so we cannot rely on the port.
+	revokeAudiences := []string{legacyAuthority}
+	for _, name := range config.DNSNames {
+		revokeAudiences = append(revokeAudiences, fmt.Sprintf("https://%s/sign", name),
+			fmt.Sprintf("https://%s/1.0/sign", name))
 	}
 
 	var a = &Authority{
@@ -70,27 +76,12 @@ func New(config *Config) (*Authority, error) {
 		provisionerKeySetIndex: new(sync.Map),
 		sortedProvisioners:     sorted,
 		audiences:              audiences,
+		revokeAudiences:        revokeAudiences,
 	}
 	if err := a.init(); err != nil {
 		return nil, err
 	}
 	return a, nil
-}
-
-// Initialize database with all necessary tables.
-func (a *Authority) initDB() error {
-	var err error
-	if a.db, err = db.New(a.config.DB); err != nil {
-		return err
-	}
-	tables := [][]byte{revokedCertsTable}
-	for _, b := range tables {
-		if err = a.db.CreateTable(revokedCertsTable); err != nil {
-			return errors.Wrapf(err, "error creating table %s",
-				string(b))
-		}
-	}
-	return nil
 }
 
 // init performs validation and initializes the fields of an Authority struct.
@@ -102,9 +93,9 @@ func (a *Authority) init() error {
 
 	var err error
 
-	// Initialize Database if defined in configuration.
-	if len(a.config.DB) > 0 {
-		a.initDB()
+	// Initialize step-ca Database if defined in configuration.
+	if a.config.DB != nil {
+		a.db, err = a.db.Init(a.config.DB)
 	}
 
 	// Load the root certificates and add them to the certificate store
