@@ -80,8 +80,11 @@ func (r *RevokeRequest) Validate() (err error) {
 	return
 }
 
-// Revoke prevents a certificate from being renewed in the future.
-// TODO: Add CRL and OCSP support to prevent certificate from being used in present.
+// Revoke supports handful of different methods that revoke a Certificate.
+//
+// NOTE: currently only Passive revocation is supported.
+//
+// TODO: Add CRL and OCSP support.
 func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 	var body RevokeRequest
 	if err := ReadJSON(r.Body, &body); err != nil {
@@ -99,6 +102,8 @@ func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		provisionerID string
 	)
 
+	// A token indicates that we are using revoking via a provisioner, otherwise
+	// it is assumed that the certificate is revoking itself over mTLS.
 	if len(body.OTT) > 0 {
 		// If a token is passed then Authorize the token.
 		logOtt(w, body.OTT)
@@ -107,7 +112,7 @@ func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// If no token is present, then the request must be made over mTLS and
-		// the client certificate Serial Number must match the serial number '
+		// the client certificate Serial Number must match the serial number
 		// being revoked.
 		if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
 			WriteError(w, BadRequest(errors.New("missing peer certificate")))

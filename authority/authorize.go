@@ -130,13 +130,15 @@ func (a *Authority) authorizeToken(ott string, claims *Claims, audiences []strin
 	}
 
 	if err = token.Claims(p.Key, &claims); err != nil {
-		return nil, &apiError{err, http.StatusUnauthorized, errContext}
+		return nil, &apiError{errors.Wrap(err, "provisioner public key cannot parse claims"),
+			http.StatusUnauthorized, errContext}
 	}
 
 	// According to "rfc7519 JSON Web Token" acceptable skew should be no
 	// more than a few minutes.
 	if err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: p.Name,
+		Time:   time.Now().UTC(),
 	}, time.Minute); err != nil {
 		return nil, &apiError{errors.Wrapf(err, "authorize: invalid token"),
 			http.StatusUnauthorized, errContext}
