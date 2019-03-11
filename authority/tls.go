@@ -252,28 +252,47 @@ func (a *Authority) Renew(ocx *x509.Certificate) (*x509.Certificate, *x509.Certi
 	return serverCert, caCert, nil
 }
 
-// Revoke passively revokes a certificate by adding it to a persistent table
-// of revoked certificates which is then queried on Renew.
+// RevocationTypeSelection is a map representing the selected types of
+type RevocationTypeSelection struct {
+	All, Passive, CRL, OCSP bool
+}
+
+// Revoke revokes a certificate.
 //
 // NOTE: Only supports passive revocation - prevent existing certificates from
 // being renewed.
 //
 // TODO: Add OCSP and CRL support.
-func (a *Authority) Revoke(serial string, provisionerID string, reason int) error {
-	if a.db == nil {
-		return &apiError{errors.New("no persistence layer configured"),
-			http.StatusUnauthorized, context{}}
+func (a *Authority) Revoke(rts RevocationTypeSelection, serial string, provisionerID string, reason int) error {
+	var errContext = context{
+		"serial":        serial,
+		"provisionerID": provisionerID,
+		"reason":        reason,
 	}
+	if rts.All || rts.Passive {
+		if a.db == nil {
+			return &apiError{errors.New("no persistence layer configured"),
+				http.StatusUnauthorized, errContext}
+		}
 
-	rci := &db.RevokedCertificateInfo{
-		Serial:        serial,
-		ProvisionerID: provisionerID,
-		Reason:        reason,
-		RevokedAt:     time.Now().UTC(),
+		rci := &db.RevokedCertificateInfo{
+			Serial:        serial,
+			ProvisionerID: provisionerID,
+			Reason:        reason,
+			RevokedAt:     time.Now().UTC(),
+		}
+
+		if err := a.db.Revoke(rci); err != nil {
+			return err
+		}
 	}
-
-	if err := a.db.Revoke(rci); err != nil {
-		return err
+	if rts.All || rts.CRL {
+		return &apiError{errors.New("revoke CRL unimplemented"), http.StatusUnauthorized,
+			errContext}
+	}
+	if rts.All || rts.OCSP {
+		return &apiError{errors.New("revoke OCSP unimplemented"), http.StatusUnauthorized,
+			errContext}
 	}
 
 	return nil

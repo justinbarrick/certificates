@@ -63,8 +63,8 @@ func New(config *Config) (*Authority, error) {
 	// The CA might have proxies in front so we cannot rely on the port.
 	revokeAudiences := []string{legacyAuthority}
 	for _, name := range config.DNSNames {
-		revokeAudiences = append(revokeAudiences, fmt.Sprintf("https://%s/sign", name),
-			fmt.Sprintf("https://%s/1.0/sign", name))
+		revokeAudiences = append(revokeAudiences, fmt.Sprintf("https://%s/revoke", name),
+			fmt.Sprintf("https://%s/1.0/revoke", name))
 	}
 
 	var a = &Authority{

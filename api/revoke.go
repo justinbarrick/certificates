@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/smallstep/certificates/authority"
 	"golang.org/x/crypto/ocsp"
 )
 
@@ -48,7 +49,11 @@ type RevokeRequest struct {
 	Serial     string `json:"serial"`
 	OTT        string `json:"ott"`
 	Reason     string `json:"reason"`
+	Passive    bool   `json:"passive"`
+	CRL        bool   `json:"passive"`
+	OCSP       bool   `json:"passive"`
 	ReasonCode int
+	RTS        authority.RevocationTypeSelection
 }
 
 // Validate checks the fields of the RevokeRequest and returns nil if they are ok
@@ -59,6 +64,17 @@ func (r *RevokeRequest) Validate() (err error) {
 	}
 	if r.ReasonCode, err = ReasonStringToCode(r.Reason); err != nil {
 		return BadRequest(err)
+	}
+
+	r.RTS = authority.RevocationTypeSelection{
+		Passive: r.Passive,
+		CRL:     r.CRL,
+		OCSP:    r.OCSP,
+	}
+
+	// If no revocation type is selected then assume 'All'.
+	if !(r.RTS.Passive || r.RTS.CRL || r.RTS.OCSP) {
+		r.RTS.All = true
 	}
 
 	return
@@ -106,7 +122,7 @@ func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 
 	logRevoke(w, body.Serial, provisionerID, body.Reason)
 
-	if err := h.Authority.Revoke(body.Serial, provisionerID, body.ReasonCode); err != nil {
+	if err := h.Authority.Revoke(body.RTS, body.Serial, provisionerID, body.ReasonCode); err != nil {
 		WriteError(w, Forbidden(err))
 		return
 	}
