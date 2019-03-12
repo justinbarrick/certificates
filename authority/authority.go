@@ -96,6 +96,11 @@ func (a *Authority) init() error {
 	// Initialize step-ca Database if defined in configuration.
 	if a.config.DB != nil {
 		a.db, err = a.db.Init(a.config.DB)
+	} else {
+		// Set the authority DB to a nil type db.DB so that we can take advantage
+		// of methods that know when the calling object is nil and respond intelligently.
+		var db *db.DB
+		a.db = db
 	}
 
 	// Load the root certificates and add them to the certificate store
