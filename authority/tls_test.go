@@ -508,7 +508,7 @@ func TestRevoke(t *testing.T) {
 	}
 	type test struct {
 		a             *Authority
-		rts           RevocationTypeSelection
+		rts           RevocationTypeSelector
 		serial        string
 		provisionerID string
 		reason        int
@@ -520,7 +520,7 @@ func TestRevoke(t *testing.T) {
 			a.db = nil
 			return test{
 				a:             a,
-				rts:           RevocationTypeSelection{All: true},
+				rts:           RevocationTypeSelector{All: true},
 				serial:        "sn",
 				provisionerID: "provisioner-id",
 				reason:        2,
@@ -533,7 +533,7 @@ func TestRevoke(t *testing.T) {
 			a.db = &MockAuthDB{err: errors.New("force")}
 			return test{
 				a:             a,
-				rts:           RevocationTypeSelection{All: true},
+				rts:           RevocationTypeSelector{All: true},
 				serial:        "sn",
 				provisionerID: "provisioner-id",
 				reason:        2,
@@ -546,7 +546,7 @@ func TestRevoke(t *testing.T) {
 			a.db = &MockAuthDB{}
 			return test{
 				a:             a,
-				rts:           RevocationTypeSelection{Passive: true},
+				rts:           RevocationTypeSelector{Passive: true},
 				serial:        "sn",
 				provisionerID: "provisioner-id",
 				reason:        2,
@@ -557,7 +557,7 @@ func TestRevoke(t *testing.T) {
 			a.db = &MockAuthDB{}
 			return test{
 				a:             a,
-				rts:           RevocationTypeSelection{All: true},
+				rts:           RevocationTypeSelector{All: true},
 				serial:        "sn",
 				provisionerID: "provisioner-id",
 				reason:        2,
@@ -569,7 +569,7 @@ func TestRevoke(t *testing.T) {
 			a := testAuthority(t)
 			return test{
 				a:             a,
-				rts:           RevocationTypeSelection{CRL: true},
+				rts:           RevocationTypeSelector{CRL: true},
 				serial:        "sn",
 				provisionerID: "provisioner-id",
 				reason:        2,
@@ -581,7 +581,7 @@ func TestRevoke(t *testing.T) {
 			a := testAuthority(t)
 			return test{
 				a:             a,
-				rts:           RevocationTypeSelection{OCSP: true},
+				rts:           RevocationTypeSelector{OCSP: true},
 				serial:        "sn",
 				provisionerID: "provisioner-id",
 				reason:        2,

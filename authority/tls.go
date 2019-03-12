@@ -252,8 +252,8 @@ func (a *Authority) Renew(ocx *x509.Certificate) (*x509.Certificate, *x509.Certi
 	return serverCert, caCert, nil
 }
 
-// RevocationTypeSelection is a map representing the selected types of
-type RevocationTypeSelection struct {
+// RevocationTypeSelector is a map representing the selected types of
+type RevocationTypeSelector struct {
 	All, Passive, CRL, OCSP bool
 }
 
@@ -263,7 +263,7 @@ type RevocationTypeSelection struct {
 // being renewed.
 //
 // TODO: Add OCSP and CRL support.
-func (a *Authority) Revoke(rts RevocationTypeSelection, serial string, provisionerID string, reasonCode int) error {
+func (a *Authority) Revoke(rts RevocationTypeSelector, serial string, provisionerID string, reasonCode int) error {
 	var errContext = context{
 		"serialNumber":  serial,
 		"provisionerID": provisionerID,

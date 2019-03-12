@@ -2,13 +2,14 @@ package api
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/smallstep/certificates/authority"
+	"github.com/smallstep/certificates/logging"
 	"golang.org/x/crypto/ocsp"
 )
 
+/*
 // RevocationReasonCodes is a map between string reason codes
 // to integers as defined in RFC 5280
 var RevocationReasonCodes = map[string]int{
@@ -38,6 +39,7 @@ func ReasonStringToCode(reason string) (int, error) {
 
 	return code, nil
 }
+*/
 
 // RevokeResponse is the response object that returns the health of the server.
 type RevokeResponse struct {
@@ -48,12 +50,11 @@ type RevokeResponse struct {
 type RevokeRequest struct {
 	Serial     string `json:"serial"`
 	OTT        string `json:"ott"`
-	Reason     string `json:"reason"`
+	ReasonCode int    `json:"reasonCode"`
 	Passive    bool   `json:"passive"`
 	CRL        bool   `json:"crl"`
 	OCSP       bool   `json:"ocsp"`
-	ReasonCode int
-	RTS        authority.RevocationTypeSelection
+	RTS        authority.RevocationTypeSelector
 }
 
 // Validate checks the fields of the RevokeRequest and returns nil if they are ok
@@ -62,11 +63,11 @@ func (r *RevokeRequest) Validate() (err error) {
 	if r.Serial == "" {
 		return BadRequest(errors.New("missing serial"))
 	}
-	if r.ReasonCode, err = ReasonStringToCode(r.Reason); err != nil {
-		return BadRequest(err)
+	if r.ReasonCode < ocsp.Unspecified || r.ReasonCode > ocsp.AACompromise {
+		return BadRequest(errors.New("reasonCode out of bounds"))
 	}
 
-	r.RTS = authority.RevocationTypeSelection{
+	r.RTS = authority.RevocationTypeSelector{
 		Passive: r.Passive,
 		CRL:     r.CRL,
 		OCSP:    r.OCSP,
@@ -102,8 +103,8 @@ func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		provisionerID string
 	)
 
-	// A token indicates that we are using revoking via a provisioner, otherwise
-	// it is assumed that the certificate is revoking itself over mTLS.
+	// A token indicates that we are using the api via a provisioner token,
+	// otherwise it is assumed that the certificate is revoking itself over mTLS.
 	if len(body.OTT) > 0 {
 		// If a token is passed then Authorize the token.
 		logOtt(w, body.OTT)
@@ -126,7 +127,7 @@ func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logRevoke(w, body.Serial, provisionerID, body.Reason)
+	logRevoke(w, body.Serial, provisionerID, body.ReasonCode)
 
 	if err := h.Authority.Revoke(body.RTS, body.Serial, provisionerID, body.ReasonCode); err != nil {
 		WriteError(w, Forbidden(err))
@@ -135,4 +136,14 @@ func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	JSON(w, &RevokeResponse{Status: "ok"})
+}
+
+func logRevoke(w http.ResponseWriter, serial, provisionerID string, reasonCode int) {
+	if rl, ok := w.(logging.ResponseLogger); ok {
+		rl.WithFields(map[string]interface{}{
+			"serial":        serial,
+			"provisionerID": provisionerID,
+			"reasonCode":    reasonCode,
+		})
+	}
 }

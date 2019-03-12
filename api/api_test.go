@@ -416,7 +416,7 @@ type mockAuthority struct {
 	root            func(shasum string) (*x509.Certificate, error)
 	sign            func(cr *x509.CertificateRequest, signOpts authority.SignOptions, extraOpts ...interface{}) (*x509.Certificate, *x509.Certificate, error)
 	renew           func(cert *x509.Certificate) (*x509.Certificate, *x509.Certificate, error)
-	revoke          func(rts authority.RevocationTypeSelection, serial string, provisionerID string, reason int) error
+	revoke          func(rts authority.RevocationTypeSelector, serial string, provisionerID string, reason int) error
 	getProvisioners func(nextCursor string, limit int) ([]*authority.Provisioner, string, error)
 	getEncryptedKey func(kid string) (string, error)
 	getRoots        func() ([]*x509.Certificate, error)
@@ -458,7 +458,7 @@ func (m *mockAuthority) Renew(cert *x509.Certificate) (*x509.Certificate, *x509.
 	return m.ret1.(*x509.Certificate), m.ret2.(*x509.Certificate), m.err
 }
 
-func (m *mockAuthority) Revoke(rts authority.RevocationTypeSelection, serial string, provisionerID string, reason int) error {
+func (m *mockAuthority) Revoke(rts authority.RevocationTypeSelector, serial string, provisionerID string, reason int) error {
 	if m.revoke != nil {
 		return m.revoke(rts, serial, provisionerID, reason)
 	}

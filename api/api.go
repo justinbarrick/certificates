@@ -31,7 +31,7 @@ type Authority interface {
 	Root(shasum string) (*x509.Certificate, error)
 	Sign(cr *x509.CertificateRequest, signOpts authority.SignOptions, extraOpts ...interface{}) (*x509.Certificate, *x509.Certificate, error)
 	Renew(peer *x509.Certificate) (*x509.Certificate, *x509.Certificate, error)
-	Revoke(rts authority.RevocationTypeSelection, serial string, provisionerID string, reason int) error
+	Revoke(rts authority.RevocationTypeSelector, serial string, provisionerID string, reason int) error
 	GetProvisioners(cursor string, limit int) ([]*authority.Provisioner, string, error)
 	GetEncryptedKey(kid string) (string, error)
 	GetRoots() (federation []*x509.Certificate, err error)
@@ -398,16 +398,6 @@ func logOtt(w http.ResponseWriter, token string) {
 	if rl, ok := w.(logging.ResponseLogger); ok {
 		rl.WithFields(map[string]interface{}{
 			"ott": token,
-		})
-	}
-}
-
-func logRevoke(w http.ResponseWriter, serial, provisionerID, reason string) {
-	if rl, ok := w.(logging.ResponseLogger); ok {
-		rl.WithFields(map[string]interface{}{
-			"serial":        serial,
-			"provisionerID": provisionerID,
-			"reason":        reason,
 		})
 	}
 }
