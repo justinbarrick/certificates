@@ -17,6 +17,13 @@ type Config struct {
 	Path string `json:"path"`
 }
 
+// AuthDB is an interface over an Authority DB client that implements a nosql.DB interface.
+type AuthDB interface {
+	Init(c *Config) (AuthDB, error)
+	IsRevoked(sn string) (bool, error)
+	Revoke(rci *RevokedCertificateInfo) error
+}
+
 // DB is a wrapper over the nosql.DB interface.
 type DB struct {
 	nosql.DB
@@ -35,7 +42,7 @@ func New(c *Config) (*DB, error) {
 }
 
 // Init database with all necessary tables.
-func (db *DB) Init(c *Config) (*DB, error) {
+func (db *DB) Init(c *Config) (AuthDB, error) {
 	var err error
 	if db == nil {
 		if db, err = New(c); err != nil {
@@ -57,7 +64,7 @@ func (db *DB) Init(c *Config) (*DB, error) {
 type RevokedCertificateInfo struct {
 	Serial        string
 	ProvisionerID string
-	Reason        int
+	ReasonCode    int
 	RevokedAt     time.Time
 }
 
@@ -91,7 +98,7 @@ func (db *DB) Revoke(rci *RevokedCertificateInfo) error {
 		return errors.Wrap(err, "error marshaling revoked certificate info")
 	}
 
-	if db.Set(revokedCertsTable, []byte(rci.Serial), rcib); err != nil {
+	if err = db.Set(revokedCertsTable, []byte(rci.Serial), rcib); err != nil {
 		return errors.Wrap(err, "database Set error")
 	}
 	return nil

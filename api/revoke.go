@@ -50,8 +50,8 @@ type RevokeRequest struct {
 	OTT        string `json:"ott"`
 	Reason     string `json:"reason"`
 	Passive    bool   `json:"passive"`
-	CRL        bool   `json:"passive"`
-	OCSP       bool   `json:"passive"`
+	CRL        bool   `json:"crl"`
+	OCSP       bool   `json:"ocsp"`
 	ReasonCode int
 	RTS        authority.RevocationTypeSelection
 }
@@ -109,6 +109,7 @@ func (h *caHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		logOtt(w, body.OTT)
 		if provisionerID, err = h.Authority.AuthorizeRevoke(body.OTT); err != nil {
 			WriteError(w, Unauthorized(err))
+			return
 		}
 	} else {
 		// If no token is present, then the request must be made over mTLS and

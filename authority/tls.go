@@ -263,35 +263,35 @@ type RevocationTypeSelection struct {
 // being renewed.
 //
 // TODO: Add OCSP and CRL support.
-func (a *Authority) Revoke(rts RevocationTypeSelection, serial string, provisionerID string, reason int) error {
+func (a *Authority) Revoke(rts RevocationTypeSelection, serial string, provisionerID string, reasonCode int) error {
 	var errContext = context{
-		"serial":        serial,
+		"serialNumber":  serial,
 		"provisionerID": provisionerID,
-		"reason":        reason,
+		"reasonCode":    reasonCode,
 	}
 	if rts.All || rts.Passive {
 		if a.db == nil {
 			return &apiError{errors.New("no persistence layer configured"),
-				http.StatusUnauthorized, errContext}
+				http.StatusNotImplemented, errContext}
 		}
 
 		rci := &db.RevokedCertificateInfo{
 			Serial:        serial,
 			ProvisionerID: provisionerID,
-			Reason:        reason,
+			ReasonCode:    reasonCode,
 			RevokedAt:     time.Now().UTC(),
 		}
 
 		if err := a.db.Revoke(rci); err != nil {
-			return err
+			return &apiError{err, http.StatusInternalServerError, errContext}
 		}
 	}
 	if rts.All || rts.CRL {
-		return &apiError{errors.New("revoke CRL unimplemented"), http.StatusUnauthorized,
+		return &apiError{errors.New("revoke CRL unimplemented"), http.StatusNotImplemented,
 			errContext}
 	}
 	if rts.All || rts.OCSP {
-		return &apiError{errors.New("revoke OCSP unimplemented"), http.StatusUnauthorized,
+		return &apiError{errors.New("revoke OCSP unimplemented"), http.StatusNotImplemented,
 			errContext}
 	}
 

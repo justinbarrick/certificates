@@ -30,7 +30,7 @@ type Authority struct {
 	sortedProvisioners     provisionerSlice
 	audiences              []string
 	revokeAudiences        []string
-	db                     *db.DB
+	db                     db.AuthDB
 	// Do not re-initialize
 	initOnce bool
 }

@@ -499,3 +499,114 @@ func TestGetTLSOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestRevoke(t *testing.T) {
+	ctx := map[string]interface{}{
+		"serialNumber":  "sn",
+		"provisionerID": "provisioner-id",
+		"reasonCode":    2,
+	}
+	type test struct {
+		a             *Authority
+		rts           RevocationTypeSelection
+		serial        string
+		provisionerID string
+		reason        int
+		err           *apiError
+	}
+	tests := map[string]func() test{
+		"error/nil db": func() test {
+			a := testAuthority(t)
+			a.db = nil
+			return test{
+				a:             a,
+				rts:           RevocationTypeSelection{All: true},
+				serial:        "sn",
+				provisionerID: "provisioner-id",
+				reason:        2,
+				err: &apiError{errors.New("no persistence layer configured"),
+					http.StatusNotImplemented, ctx},
+			}
+		},
+		"error/db revoke": func() test {
+			a := testAuthority(t)
+			a.db = &MockAuthDB{err: errors.New("force")}
+			return test{
+				a:             a,
+				rts:           RevocationTypeSelection{All: true},
+				serial:        "sn",
+				provisionerID: "provisioner-id",
+				reason:        2,
+				err: &apiError{errors.New("force"),
+					http.StatusInternalServerError, ctx},
+			}
+		},
+		"ok/successful passive revocation": func() test {
+			a := testAuthority(t)
+			a.db = &MockAuthDB{}
+			return test{
+				a:             a,
+				rts:           RevocationTypeSelection{Passive: true},
+				serial:        "sn",
+				provisionerID: "provisioner-id",
+				reason:        2,
+			}
+		},
+		"error/All unimplemented": func() test {
+			a := testAuthority(t)
+			a.db = &MockAuthDB{}
+			return test{
+				a:             a,
+				rts:           RevocationTypeSelection{All: true},
+				serial:        "sn",
+				provisionerID: "provisioner-id",
+				reason:        2,
+				err: &apiError{errors.New("revoke CRL unimplemented"),
+					http.StatusNotImplemented, ctx},
+			}
+		},
+		"error/CRL unimplemented": func() test {
+			a := testAuthority(t)
+			return test{
+				a:             a,
+				rts:           RevocationTypeSelection{CRL: true},
+				serial:        "sn",
+				provisionerID: "provisioner-id",
+				reason:        2,
+				err: &apiError{errors.New("revoke CRL unimplemented"),
+					http.StatusNotImplemented, ctx},
+			}
+		},
+		"error/OCSP unimplemented": func() test {
+			a := testAuthority(t)
+			return test{
+				a:             a,
+				rts:           RevocationTypeSelection{OCSP: true},
+				serial:        "sn",
+				provisionerID: "provisioner-id",
+				reason:        2,
+				err: &apiError{errors.New("revoke OCSP unimplemented"),
+					http.StatusNotImplemented, ctx},
+			}
+		},
+	}
+	for name, f := range tests {
+		tc := f()
+		t.Run(name, func(t *testing.T) {
+			if err := tc.a.Revoke(tc.rts, tc.serial, tc.provisionerID, tc.reason); err != nil {
+				if assert.NotNil(t, tc.err) {
+					switch v := err.(type) {
+					case *apiError:
+						assert.HasPrefix(t, v.err.Error(), tc.err.Error())
+						assert.Equals(t, v.code, tc.err.code)
+						assert.Equals(t, v.context, tc.err.context)
+					default:
+						t.Errorf("unexpected error type: %T", v)
+					}
+				}
+			} else {
+				assert.Nil(t, tc.err)
+			}
+		})
+	}
+}
