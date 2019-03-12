@@ -469,6 +469,9 @@ func (m *mockAuthority) AuthorizeRevoke(ott string) (provisionerID string, err e
 	if m.authorizeRevoke != nil {
 		return m.authorizeRevoke(ott)
 	}
+	if m.ret1 == nil {
+		return "", m.err
+	}
 	return m.ret1.(string), m.err
 }
 
