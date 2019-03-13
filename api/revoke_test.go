@@ -24,18 +24,18 @@ func TestRevokeRequestValidate(t *testing.T) {
 		rts authority.RevocationTypeSelector
 	}
 	tests := map[string]test{
-		"error/missing serial": test{
+		"error/missing serial": {
 			rr:  &RevokeRequest{},
 			err: &Error{Err: errors.New("missing serial"), Status: http.StatusBadRequest},
 		},
-		"error/bad reasonCode": test{
+		"error/bad reasonCode": {
 			rr: &RevokeRequest{
 				Serial:     "sn",
 				ReasonCode: 15,
 			},
 			err: &Error{Err: errors.New("reasonCode out of bounds"), Status: http.StatusBadRequest},
 		},
-		"ok/all false": test{
+		"ok/all false": {
 			rr: &RevokeRequest{
 				Serial:     "sn",
 				ReasonCode: 9,

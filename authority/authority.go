@@ -95,7 +95,9 @@ func (a *Authority) init() error {
 
 	// Initialize step-ca Database if defined in configuration.
 	if a.config.DB != nil {
-		a.db, err = a.db.Init(a.config.DB)
+		if a.db, err = a.db.Init(a.config.DB); err != nil {
+			return err
+		}
 	} else {
 		// Set the authority DB to a nil type db.DB so that we can take advantage
 		// of methods that know when the calling object is nil and respond intelligently.
