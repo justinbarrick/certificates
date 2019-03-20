@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -32,15 +33,18 @@ var (
 	// we'll hard code instead for now.
 	//rootCAPath  = pki.GetRootCAPath()
 	rootCAPath = "/home/step/.step/certs/root_ca.crt"
+	fileModeRegex = regexp.MustCompile("^[0-9][0-9][0-9]$")
 )
 
 const (
-	admissionWebhookAnnotationKey = "autocert.step.sm/name"
-	admissionWebhookStatusKey     = "autocert.step.sm/status"
-	provisionerPasswordFile       = "/home/step/password/password"
-	volumeMountPath               = "/var/run/autocert.step.sm"
-	tokenSecretKey                = "token"
-	tokenSecretLabel              = "autocert.step.sm/token"
+	admissionWebhookAnnotationKey         = "autocert.step.sm/name"
+	admissionWebhookStatusKey             = "autocert.step.sm/status"
+	admissionWebhookAnnotationFileModeKey = "autocert.step.sm/filemode"
+	provisionerPasswordFile               = "/home/step/password/password"
+	volumeMountPath                       = "/var/run/autocert.step.sm"
+	tokenSecretKey                        = "token"
+	tokenSecretLabel                      = "autocert.step.sm/token"
+	clusterDomain                         = "cluster.local"
 )
 
 // Config options for the autocert admission controller.
@@ -202,7 +206,7 @@ func createTokenSecret(prefix, namespace, token string) (string, error) {
 // mkBootstrapper generates a bootstrap container based on the template defined in Config. It
 // generates a new bootstrap token and mounts it, along with other required coniguration, as
 // environment variables in the returned bootstrap container.
-func mkBootstrapper(config *Config, commonName string, namespace string, provisioner Provisioner) (corev1.Container, error) {
+func mkBootstrapper(config *Config, commonName string, namespace string, provisioner Provisioner, fileMode string) (corev1.Container, error) {
 	b := config.Bootstrapper
 
 	token, err := provisioner.Token(commonName)
@@ -228,6 +232,13 @@ func mkBootstrapper(config *Config, commonName string, namespace string, provisi
 		Name:  "COMMON_NAME",
 		Value: commonName,
 	})
+
+	if fileModeRegex.MatchString(fileMode) {
+		b.Env = append(b.Env, corev1.EnvVar{
+			Name:  "FILE_MODE",
+			Value: fileMode,
+		})
+	}
 
 	b.Env = append(b.Env, corev1.EnvVar{
 		Name: "STEP_TOKEN",
@@ -372,8 +383,9 @@ func patch(pod *corev1.Pod, namespace string, config *Config, provisioner Provis
 
 	annotations := pod.ObjectMeta.GetAnnotations()
 	commonName := annotations[admissionWebhookAnnotationKey]
+	fileMode := annotations[admissionWebhookAnnotationFileModeKey]
 	renewer := mkRenewer(config)
-	bootstrapper, err := mkBootstrapper(config, commonName, namespace, provisioner)
+	bootstrapper, err := mkBootstrapper(config, commonName, namespace, provisioner, fileMode)
 	if err != nil {
 		return nil, err
 	}
