@@ -32,21 +32,22 @@ var (
 	// GetRootCAPath() is broken; points to secrets not certs. So
 	// we'll hard code instead for now.
 	//rootCAPath  = pki.GetRootCAPath()
-	rootCAPath = "/home/step/.step/certs/root_ca.crt"
+	rootCAPath  = "/home/step/.step/certs/root_ca.crt"
 	numberRegex = regexp.MustCompile("^\\d+$")
 )
 
 const (
-	admissionWebhookAnnotationKey          = "autocert.step.sm/name"
-	admissionWebhookStatusKey              = "autocert.step.sm/status"
-	admissionWebhookAnnotationFileModeKey  = "autocert.step.sm/filemode"
-	admissionWebhookAnnotationFileUserKey  = "autocert.step.sm/user"
-	admissionWebhookAnnotationFileGroupKey = "autocert.step.sm/group"
-	provisionerPasswordFile                = "/home/step/password/password"
-	volumeMountPath                        = "/var/run/autocert.step.sm"
-	tokenSecretKey                         = "token"
-	tokenSecretLabel                       = "autocert.step.sm/token"
-	clusterDomain                          = "cluster.local"
+	admissionWebhookAnnotationKey                 = "autocert.step.sm/name"
+	admissionWebhookStatusKey                     = "autocert.step.sm/status"
+	admissionWebhookAnnotationFileModeKey         = "autocert.step.sm/filemode"
+	admissionWebhookAnnotationFileUserKey         = "autocert.step.sm/user"
+	admissionWebhookAnnotationFileGroupKey        = "autocert.step.sm/group"
+	admissionWebhookAnnotationPostRenewCommandKey = "autocert.step.sm/post-renew-command"
+	provisionerPasswordFile                       = "/home/step/password/password"
+	volumeMountPath                               = "/var/run/autocert.step.sm"
+	tokenSecretKey                                = "token"
+	tokenSecretLabel                              = "autocert.step.sm/token"
+	clusterDomain                                 = "cluster.local"
 )
 
 // Config options for the autocert admission controller.
@@ -256,7 +257,6 @@ func mkBootstrapper(config *Config, commonName string, namespace string, provisi
 		})
 	}
 
-
 	b.Env = append(b.Env, corev1.EnvVar{
 		Name: "STEP_TOKEN",
 		ValueFrom: &corev1.EnvVarSource{
@@ -284,11 +284,15 @@ func mkBootstrapper(config *Config, commonName string, namespace string, provisi
 }
 
 // mkRenewer generates a new renewer based on the template provided in Config.
-func mkRenewer(config *Config) corev1.Container {
+func mkRenewer(config *Config, postRenewCommand string) corev1.Container {
 	r := config.Renewer
 	r.Env = append(r.Env, corev1.EnvVar{
 		Name:  "STEP_CA_URL",
 		Value: config.CaURL,
+	})
+	r.Env = append(r.Env, corev1.EnvVar{
+		Name:  "POST_RENEW_COMMAND",
+		Value: postRenewCommand,
 	})
 	return r
 }
@@ -403,7 +407,8 @@ func patch(pod *corev1.Pod, namespace string, config *Config, provisioner Provis
 	fileMode := annotations[admissionWebhookAnnotationFileModeKey]
 	fileUser := annotations[admissionWebhookAnnotationFileUserKey]
 	fileGroup := annotations[admissionWebhookAnnotationFileGroupKey]
-	renewer := mkRenewer(config)
+	postRenewCommand := annotations[admissionWebhookAnnotationPostRenewCommandKey]
+	renewer := mkRenewer(config, postRenewCommand)
 	bootstrapper, err := mkBootstrapper(config, commonName, namespace, provisioner, fileMode, fileUser, fileGroup)
 	if err != nil {
 		return nil, err

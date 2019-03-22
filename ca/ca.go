@@ -1,11 +1,16 @@
 package ca
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"reflect"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
@@ -205,7 +210,29 @@ func (ca *CA) getTLSConfig(auth *authority.Authority) (*tls.Config, error) {
 		ca.renewer.Stop()
 	}
 
-	ca.renewer, err = NewTLSRenewer(tlsCrt, auth.GetTLSCertificate)
+	ca.renewer, err = NewTLSRenewer(tlsCrt, func() (*tls.Certificate, error) {
+		cert, err := auth.GetTLSCertificate()
+		if err != nil {
+			return cert, err
+		}
+
+		if os.Getenv("POST_RENEW_COMMAND") != "" {
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+
+			args := strings.Split(os.Getenv("POST_RENEW_COMMAND"), " ")
+
+			cmd := exec.Command(args[0], args[1:]...)
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+
+			cmd.Run()
+			fmt.Println(stderr.String())
+			fmt.Println(stdout.String())
+		}
+
+		return cert, err
+	})
 	if err != nil {
 		return nil, err
 	}
