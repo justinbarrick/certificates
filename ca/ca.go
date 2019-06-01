@@ -222,6 +222,8 @@ func (ca *CA) getTLSConfig(auth *authority.Authority) (*tls.Config, error) {
 
 			args := strings.Split(os.Getenv("POST_RENEW_COMMAND"), " ")
 
+			fmt.Println("Running post renew command", args...)
+
 			cmd := exec.Command(args[0], args[1:]...)
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr
