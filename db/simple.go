@@ -46,7 +46,7 @@ type usedToken struct {
 
 // UseToken returns a "NotImplemented" error.
 func (s *SimpleDB) UseToken(id, tok string) (bool, error) {
-	if _, ok := s.usedTokens.CmpAndSwap(id, &usedToken{
+	if _, ok := s.usedTokens.LoadAndStore(id, &usedToken{
 		UsedAt: time.Now().Unix(),
 		Token:  tok,
 	}); ok {
