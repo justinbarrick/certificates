@@ -49,7 +49,7 @@ required = [
   name = "github.com/smallstep/cli"
 
 [[constraint]]
-  revision = "5a355c598075a346d9ca9b50ec10e3f86ac66148"
+  revision = "b66b34823456721912ba037126e92414690c07d6"
   name = "github.com/smallstep/nosql"
 
 [[constraint]]

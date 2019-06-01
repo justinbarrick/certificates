@@ -26,9 +26,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:454adc7f974228ff789428b6dc098638c57a64aa0718f0bd61e53d3cd39d7a75"
+  digest = "1:5f3371d6e432e3c4e0ceabb14b5c0679827ce8b96bbd963fa923977782e8e99b"
   name = "github.com/chzyer/readline"
-  packages = ["."]
+  packages = [
+    ".",
+    "runes",
+  ]
   pruneopts = "UT"
   revision = "2972be24d48e78746da79ba8e24e8b488c9880de"
 
@@ -362,7 +365,7 @@
   revision = "52a50ed15eeffd50a239f3cd11fea9eb001c0f2d"
 
 [[projects]]
-  digest = "1:f1f1df1e19d55a1ef1f0a63633191e7d2a99993c0a17f945c0b9ebd16b17871b"
+  digest = "1:5e778214d472b6d2ad4d544d293d1478d9b222db8ffc6079623fbe3e58e1841e"
   name = "github.com/smallstep/nosql"
   packages = [
     ".",
@@ -372,7 +375,7 @@
     "mysql",
   ]
   pruneopts = "UT"
-  revision = "5a355c598075a346d9ca9b50ec10e3f86ac66148"
+  revision = "b66b34823456721912ba037126e92414690c07d6"
 
 [[projects]]
   branch = "master"
@@ -400,7 +403,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d270d7c7614032c6751cb02fca0a3aba9d2252ae7f2b475e8e0226945bd94f9f"
+  digest = "1:1105d5805f5a745cbc80704cf126c7db95324cded5bc54b5a6d22b40e7324ed9"
   name = "golang.org/x/crypto"
   packages = [
     "cryptobyte",
@@ -409,6 +412,7 @@
     "ed25519/internal/edwards25519",
     "ocsp",
     "pbkdf2",
+    "ssh/terminal",
   ]
   pruneopts = "UT"
   revision = "20be4c3c3ed52bfccdb2d59a412ee1a936d175a7"
@@ -433,9 +437,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8f5108406bc43c7669b0d67d282e40d05c9f268615fcaf8c1f0f76965aa3f09f"
+  digest = "1:a02364950e8c7394b03f886e57a3f7acfc4fba32ce03c186dd9f36b501d0484b"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "unix",
+    "windows",
+  ]
   pruneopts = "UT"
   revision = "4c3a928424d249a1013e789cf5e458d480bcba16"
 
