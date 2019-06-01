@@ -23,7 +23,7 @@ type MockNoSQLDB struct {
 	loadOrStore func(bucket, key, value []byte) ([]byte, bool, error)
 }
 
-func (m *MockNoSQLDB) LoadOrStore(bucket, key, value []byte) ([]byte, bool, error) {
+func (m *MockNoSQLDB) CmpAndSwap(bucket, key, value []byte) ([]byte, bool, error) {
 	if m.get != nil {
 		return m.loadOrStore(bucket, key, value)
 	}
@@ -210,7 +210,7 @@ func TestUseToken(t *testing.T) {
 		db      *DB
 		want    result
 	}{
-		"fail/force-LoadOrStore-error": {
+		"fail/force-CmpAndSwap-error": {
 			id:  "id",
 			tok: "token",
 			db: &DB{&MockNoSQLDB{
@@ -220,10 +220,10 @@ func TestUseToken(t *testing.T) {
 			}, true},
 			want: result{
 				ok:  false,
-				err: errors.New("error LoadOrStore-ing token id/token"),
+				err: errors.New("error CmpAndSwap-ing token id/token"),
 			},
 		},
-		"fail/LoadOrStore-found": {
+		"fail/CmpAndSwap-found": {
 			id:  "id",
 			tok: "token",
 			db: &DB{&MockNoSQLDB{
@@ -235,7 +235,7 @@ func TestUseToken(t *testing.T) {
 				ok: false,
 			},
 		},
-		"ok/LoadOrStore-not-found": {
+		"ok/CmpAndSwap-not-found": {
 			id:  "id",
 			tok: "token",
 			db: &DB{&MockNoSQLDB{
