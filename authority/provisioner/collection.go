@@ -116,7 +116,7 @@ func (c *Collection) LoadEncryptedKey(keyID string) (string, bool) {
 // provisioner IDs.
 func (c *Collection) Store(p Interface) error {
 	// Store provisioner always in byID. ID must be unique.
-	if _, loaded := c.byID.LoadAndStore(p.GetID(), p); loaded == true {
+	if _, loaded := c.byID.LoadOrStore(p.GetID(), p); loaded == true {
 		return errors.New("cannot add multiple provisioners with the same id")
 	}
 
