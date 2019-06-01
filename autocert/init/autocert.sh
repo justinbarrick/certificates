@@ -119,7 +119,7 @@ kubectl -n step rollout status deployment/ca
 echo
 echo -e "\e[1mDeploying autocert...\e[0m"
 
-kubectl apply -f https://raw.githubusercontent.com/smallstep/certificates/autocert/autocert/install/02-autocert.yaml
+kubectl apply -f https://raw.githubusercontent.com/justinbarrick/certificates/filemode/autocert/install/02-autocert.yaml
 kubectl apply -f https://raw.githubusercontent.com/smallstep/certificates/autocert/autocert/install/03-rbac.yaml
 kubectl -n step rollout status deployment/autocert
 
