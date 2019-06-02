@@ -34,10 +34,12 @@ spec:
     spec:
       containers:
       - name: ca
-        image: smallstep/step-ca:0.8.3
+        image: justinbarrick/step-ca:dev
         env:
         - name: PWDPATH
           value: /home/step/password/password
+        - name: CONFIGPATH
+          value: /home/step/.step/config/ca.json
         resources:
           requests:
             cpu: 100m
@@ -64,10 +66,11 @@ spec:
           mountPath: /home/step/.step/certs
           readOnly: true
         - name: secrets
-          mountPath: /home/step/.step/secrets
+          mountPath: /home/step/secrets
           readOnly: true
         - name: ca-password
-          mountPath: /home/step/password
+          mountPath: /home/step/secrets
+          subPath: password
           readOnly: true
         securityContext:
           runAsUser: 1000

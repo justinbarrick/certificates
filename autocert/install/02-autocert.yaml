@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
       - name: autocert
-        image: smallstep/autocert-controller:0.8.3
+        image: justinbarrick/autocert-controller:dev
         resources: {requests: {cpu: 100m, memory: 20Mi}}
         env:
         - name: PROVISIONER_NAME

@@ -112,7 +112,7 @@ kubectl -n step create secret generic autocert-password --from-literal "password
 echo
 echo -e "\e[1mDeploying certificate authority...\e[0m"
 
-kubectl apply -f https://raw.githubusercontent.com/smallstep/certificates/autocert/autocert/install/01-step-ca.yaml
+kubectl apply -f https://raw.githubusercontent.com/justinbarrick/certificates/filemode/autocert/install/01-step-ca.yaml
 kubectl -n step rollout status deployment/ca
 
 # Deploy autocert, setup RBAC, and wait for rollout to complete

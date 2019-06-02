@@ -1,4 +1,4 @@
-FROM smallstep/step-cli:latest
+FROM justinbarrick/step-cli:dev
 
 ARG BINPATH="bin/step-ca"
 
