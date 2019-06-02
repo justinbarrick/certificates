@@ -69,8 +69,7 @@ spec:
           mountPath: /home/step/secrets
           readOnly: true
         - name: ca-password
-          mountPath: /home/step/secrets
-          subPath: password
+          mountPath: /home/step/password
           readOnly: true
         securityContext:
           runAsUser: 1000
